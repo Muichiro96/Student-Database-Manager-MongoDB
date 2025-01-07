@@ -1,9 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
-
+from pymongo import MongoClient,errors
 import student_system as s_system
 from student_system import open_student_system
+
 import time
 
 class LoginSignupSystem:
@@ -45,35 +46,23 @@ class LoginSignupSystem:
         sign_up = tk.Button(self.frame, width=6, text='Sign up', border=0, bg='white', cursor='hand2', fg='#57a1f8', command=self.signup)
         sign_up.place(x=224, y=250)
 
-        self.connection = self.connect_to_database()
+        self.client = self.connect_to_database()
 
     def connect_to_database(self):
         try:
-            connection = mysql.connector.connect(
-                host="localhost",
-                user="root",
-                password="Rahul@5111"
-            )
-            print("Connected to MySQL")
+            connection_string =  "mongodb+srv://ouss12fr:ouss2002@student-cluster.gh1qe.mongodb.net/Student-cluster"
+            client= MongoClient(connection_string)
+            
 
-            cursor = connection.cursor()
-            cursor.execute("CREATE DATABASE IF NOT EXISTS student_management_system")
-            cursor.execute("USE student_management_system")
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    username VARCHAR(255) NOT NULL,
-                    password VARCHAR(255) NOT NULL
-                )
-            """)
+            return client["Student-cluster"]
 
-            return connection
-
-        except Error as e:
-            print("Error connecting to MySQL:", e)
-            messagebox.showerror("Error", "Failed to connect to MySQL")
+        except errors.ConnectionFailure as e:
+            print("Error connecting to MongoDb:", e)
+            messagebox.showerror("Error", "Failed to connect to MongoDb")
             return None
+        except errors.CollectionInvalid as inv:
+            print("collection invalide:", e)
+            messagebox.showerror("Error", "Failed to connect to MongoDb")
 
     def on_enter(self, e):
         self.user.delete(0, 'end')
@@ -102,9 +91,8 @@ class LoginSignupSystem:
             messagebox.showerror("Error", "Username and password are required fields")
         else:
             try:
-                cursor = self.connection.cursor()
-                cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username, password))
-                user = cursor.fetchone()
+                users=self.client["users"]
+                user=users.find_one({"username" : username, "password": password})
 
                 if user:
                     messagebox.showinfo("Success", "Login successful")
@@ -117,7 +105,7 @@ class LoginSignupSystem:
                     messagebox.showerror("Error", "Invalid username or password")
                     self.progress_window.destroy()
 
-            except Error as e:
+            except Exception as e:
                 print("Error occurred while logging in:", e)
                 messagebox.showerror("Error", "Failed to login")
                 self.progress_window.destroy()
@@ -188,10 +176,8 @@ class LoginSignupSystem:
 
 
         try:
-                
-            cursor = self.connection.cursor()
-            cursor.execute("INSERT INTO users (name, username, password) VALUES (%s,%s,%s)", (name, username, password))
-            self.connection.commit()
+            users=self.client["users"]
+            users.insert_one({"name":name ,"username" : username,"password":password})
             messagebox.showinfo("Success", "Signup successful")
 
             self.frame1.destroy()
@@ -200,7 +186,7 @@ class LoginSignupSystem:
                     
                 
 
-        except Error as e:
+        except Exception as e:
             print("Error occurred while signing up:", e)
             messagebox.showerror("Error", "Failed to signup")
 
