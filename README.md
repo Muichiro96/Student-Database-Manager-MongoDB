@@ -4,7 +4,7 @@ Implementing MongoDB using "pymongo"
  
 
   <bold> My Tkinter GUI ( Modded ) </bold>
-  <img src="bg_images/Modded-Tk.png"/>
+  <img src="bg_images/Light-Tk.png"/>
 
 
   
