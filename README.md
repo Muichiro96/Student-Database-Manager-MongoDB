@@ -1,6 +1,6 @@
 Implementing MongoDB using "pymongo"
 ------------------------------------------------------------------------------------------------------------------------------------
-<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mongodb/mongodb-original-wordmark.svg">
+<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mongodb/mongodb-original-wordmark.svg" style="width:200px;height:200px;">
  
 
   <bold> Tkinter GUI </bold>
