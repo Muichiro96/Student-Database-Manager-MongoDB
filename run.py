@@ -1,5 +1,5 @@
-import login_signup
-import student_system
+import authentification
+
 
 # Start the login/signup process
-login_signup.open_login_signup_system()
+authentification.open_login_signup_system()

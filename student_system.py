@@ -3,10 +3,10 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
+from pymongo import MongoClient,errors
 import csv
-import mysql.connector
-from mysql.connector import Error
-#Install the following package " mysql-connector-python" using "pip install"
+
+#Install the following package " MongoDB-clientector-python" using "pip install"
 
 class StudentManagementSystem: #Starting the App 
     def __init__(self, root): #Declaration of the App
@@ -44,7 +44,6 @@ class StudentManagementSystem: #Starting the App
         self.email_var = tk.StringVar()
         self.gender_var = tk.StringVar()
         self.contact_var = tk.StringVar()
-        self.dob_var = tk.StringVar()
         self.search_by = tk.StringVar()
         self.search_txt = tk.StringVar()
 
@@ -85,7 +84,7 @@ class StudentManagementSystem: #Starting the App
         self.gender_label = ttk.Label(self.manage_frame, text="Gender", font=("bold", 11), style="Label.TLabel")
         self.gender_label.pack()
         self.gender_combo = ttk.Combobox(self.manage_frame, textvariable=self.gender_var, state='readonly', font=("bold", 9), style="Combobox.TCombobox")
-        self.gender_combo['values'] = ('Male', 'Female', 'Other')
+        self.gender_combo['values'] = ('Male', 'Female')
         self.gender_combo.pack()
 
         self.contact_label = ttk.Label(self.manage_frame, text="Contact", font=("bold", 11), style="Label.TLabel")
@@ -93,10 +92,7 @@ class StudentManagementSystem: #Starting the App
         self.contact_entry = ttk.Entry(self.manage_frame, textvariable=self.contact_var, font=("bold", 9), style="Entry.TEntry")
         self.contact_entry.pack()
 
-        self.dob_label = ttk.Label(self.manage_frame, text="DOB", font=("bold", 11), style="Label.TLabel")
-        self.dob_label.pack()
-        self.dob_entry = ttk.Entry(self.manage_frame, textvariable=self.dob_var, width=25, font=("bold",9 ), style="Entry.TEntry")
-        self.dob_entry.pack()
+        
 
         self.button_frame = ttk.Frame(self.manage_frame, relief="flat",borderwidth=0, style="Frame.TFrame")
         self.button_frame.pack(pady=13)
@@ -147,7 +143,7 @@ class StudentManagementSystem: #Starting the App
         self.show_all_button.grid(row=0, column=4, padx=5)
 
         self.students_tree = ttk.Treeview(self.details_frame, columns=(
-            'Student_Id', 'Name', 'Grade_Section', 'Email', 'Gender', 'Contact', 'DOB'))
+            'Student_Id', 'Name', 'Grade_Section', 'Email', 'Gender', 'Contact'))
 
         self.students_tree.heading('Student_Id', text='Student ID', anchor='w')
         self.students_tree.heading('Name', text='Name', anchor='w')
@@ -155,7 +151,7 @@ class StudentManagementSystem: #Starting the App
         self.students_tree.heading('Email', text='Email', anchor='w')
         self.students_tree.heading('Gender', text='Gender', anchor='w')
         self.students_tree.heading('Contact', text='Contact', anchor='w')
-        self.students_tree.heading('DOB', text='DOB', anchor='w')
+        
 
 
         self.students_tree['show'] = 'headings'
@@ -165,7 +161,7 @@ class StudentManagementSystem: #Starting the App
         self.students_tree.column('Email', width=200)
         self.students_tree.column('Gender', width=100)
         self.students_tree.column('Contact', width=120)
-        self.students_tree.column('DOB', width=100)
+        
 
         self.students_tree.pack(fill=tk.BOTH, expand=1)
         self.students_tree.bind('<ButtonRelease-1>', self.get_selected_row)
@@ -184,16 +180,20 @@ class StudentManagementSystem: #Starting the App
         search_by = self.search_by.get()
         search_text = self.search_txt.get()
 
-        conn = self.connect_to_database()
-        cursor = conn.cursor()
+       
 
         try:
-            query = f"SELECT * FROM students WHERE {search_by} LIKE '%{search_text}%'"
-            print(query)  # Add this line to print the query statement
-            cursor.execute(query)
-            results = cursor.fetchall()
+            client = self.connect_to_database()
+            students_collection = client["Student-cluster"]["students"]
+            if search_by != "" and search_text != "":
+                students=students_collection.find({search_by : search_text},{"_id":0})
+                count=students_collection.count_documents({search_by : search_text})
+                
+            else:
+                students=students_collection.find({},{"_id":0})
+                count=students_collection.count_documents({})
 
-            if len(results) == 0:
+            if count == 0:
                 messagebox.showwarning("No Records Found", "No records matching the search criteria.")
                 return
             file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv")])
@@ -202,23 +202,30 @@ class StudentManagementSystem: #Starting the App
 
             with open(file_path, mode='w', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerow(["Student_Id", "Name", "Grade_Section", "Email", "Gender", "Contact", "DOB"])
-                writer.writerows(results)
+                writer.writerow(["Student_Id", "Name", "Grade_Section", "Email", "Gender", "Contact"])
+                for student in students:
+                    writer.writerow([
+                    student.get("Student_Id", ""),  # Use .get() to avoid KeyError
+                    student.get("Name", ""),
+                    student.get("Grade_Section", ""),
+                    student.get("Email", ""),
+                    student.get("Gender", ""),
+                    student.get("Contact", "")
+                    ])
 
             messagebox.showinfo("Export Successful", "Data exported to CSV file successfully.")
             self.students_tree.delete(*self.students_tree.get_children())
-            delete_table = "DROP TABLE students"
-            cursor.execute(delete_table)
-            print("Data Table Deleted!")
+            if search_by != "" and search_text != "":
+                students_collection.delete_many({search_by : search_text})
+            else :
+                students_collection.delete_many({})
+                
+            
 
-
-        except Exception as e:
-            messagebox.showerror("Export Error", f"An error occurred while exporting data: {str(e)}")
 
         finally:
-            # Close the database connection
-            cursor.close()
-            conn.close()
+            # Close the database clientection
+            client.close()
 
 
 #Helps to import data from a CSV file -- ( Note :-- It will accept only the data file it has exported ..)        
@@ -239,29 +246,16 @@ class StudentManagementSystem: #Starting the App
                 headings = next(reader)  # Get the column headings
 
                 # Check if the file has the expected columns
-                if headings != ["Student_Id", "Name", "Grade_Section", "Email", "Gender", "Contact", "DOB"]:
+                if headings != ["Student_Id", "Name", "Grade_Section", "Email", "Gender", "Contact"]:
                     messagebox.showerror("Invalid File", "The selected file does not have the expected columns.")
                     return
 
-                # Connect to the MySQL database
-                conn = self.connect_to_database()
-                cursor = conn.cursor()
+                # clientect to the MongoDB database
+                client = self.connect_to_database()
+                students_collection = client["Student-cluster"]["students"]
 
-                table_name = "students"
-
-                # Create the "students" table if it doesn't exist
-                create_table_query = """
-                CREATE TABLE IF NOT EXISTS students (
-                    Student_Id INT PRIMARY KEY,
-                    Name VARCHAR(255),
-                    Grade_Section VARCHAR(255),
-                    Email VARCHAR(255),
-                    Gender VARCHAR(255),
-                    Contact VARCHAR(255),
-                    DOB VARCHAR(255)
-                )
-                """
-                cursor.execute(create_table_query)
+                
+                
 
                 # Process each row of data
                 for row in reader:
@@ -270,24 +264,20 @@ class StudentManagementSystem: #Starting the App
                     self.students_tree.insert('', tk.END, values=list(student_data.values()))
 
                     # Insert the data into the "students" table
-                    insert_query = """
-                    INSERT INTO students (Student_Id, Name, Grade_Section, Email, Gender, Contact, DOB)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """
-                    values = (
-                        student_data['Student_Id'],
-                        student_data['Name'],
-                        student_data['Grade_Section'],
-                        student_data['Email'],
-                        student_data['Gender'],
-                        student_data['Contact'],
-                        student_data['DOB']
-                    )
-                    cursor.execute(insert_query, values)
+                    students_collection.insert_one({'Student_Id':
+                        student_data['Student_Id'],'Name':
+                        student_data['Name'],'Grade_Section':
+                        student_data['Grade_Section'],'Email':
+                        student_data['Email'],'Gender':
+                        student_data['Gender'],'Contact':
+                        student_data['Contact']
+                        })
+                    
+                    
 
-                # Commit the changes and close the database connection
-                conn.commit()
-                conn.close()
+                # Commit the changes and close the database clientection
+                
+                client.close()
 
                 messagebox.showinfo("Import Successful", "Data imported from CSV file successfully.")
         except Exception as e:
@@ -300,56 +290,39 @@ class StudentManagementSystem: #Starting the App
             messagebox.showerror("Error", "Please fill in all required fields")
         else:
             try:
-                connection = self.connect_to_database()
-                cursor = connection.cursor()
-                table_query = """
-                CREATE TABLE IF NOT EXISTS students (
-                    Student_Id INT PRIMARY KEY,
-                    Name VARCHAR(255),
-                    Grade_Section VARCHAR(255),
-                    Email VARCHAR(255),
-                    Gender VARCHAR(255),
-                    Contact VARCHAR(255),
-                    DOB VARCHAR(255)
-                )
-                """
-                cursor.execute(table_query)
-                print("Student Table Created!!!")
-                query = "INSERT INTO students (Student_Id, Name, Grade_Section, Email, Gender, Contact, DOB) " \
-                        "VALUES (%s, %s, %s, %s, %s, %s, %s)"
-                values = (self.Student_Id_var.get(), self.name_var.get(), self.grade_section_var.get(),
-                          self.email_var.get(), self.gender_var.get(), self.contact_var.get(), self.dob_var.get())
-                cursor.execute(query, values)
-                print("Data Added To Database")
-                connection.commit()
-                connection.close()
+                client = self.connect_to_database()
+                students_collection = client["Student-cluster"]['students']
+               
+                students_collection.insert_one({'Student_Id':self.Student_Id_var.get(),'Name':self.name_var.get(), 'Grade_Section':self.grade_section_var.get(), 'Email':self.email_var.get(), 'Gender':self.gender_var.get(), 'Contact':self.contact_var.get()})
+                
+                
+                client.close()
                 self.clear_entries()
                 self.display_students()
                 messagebox.showinfo("Success", "Student added successfully")
-            except Error as e:
-                messagebox.showerror("Error", f"Error while connecting to the database: {e}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error while clientecting to the database: {e}")
                 
 #This function is used to update the student's Record 
     def update_student(self):
         if self.Student_Id_var.get() == '' or self.name_var.get() == '' or self.grade_section_var.get() == '':
             messagebox.showerror("Error", "Please select a student")
         else:
+            
             try:
-                connection = self.connect_to_database()
-                cursor = connection.cursor()
-                query = "UPDATE students SET Name=%s, Grade_Section=%s, Email=%s, Gender=%s, Contact=%s, DOB=%s " \
-                        "WHERE Student_Id=%s"
-                values = (self.name_var.get(), self.grade_section_var.get(), self.email_var.get(),
-                          self.gender_var.get(), self.contact_var.get(), self.dob_var.get(), self.Student_Id_var.get())
-                cursor.execute(query, values)
-                print("Data Updated in Database!!!")
-                connection.commit()
-                connection.close()
+                client = self.connect_to_database()
+                students_collection = client["Student-cluster"]["students"]
+                students_collection.update_one({'Student_Id':self.Student_Id_var.get()},{ '$set' :{'Name':self.name_var.get(), 'Grade_Section':self.grade_section_var.get(), 'Email':self.email_var.get(), 'Gender':self.gender_var.get(), 'Contact':self.contact_var.get()}})
+                
+                
+                
                 self.clear_entries()
                 self.display_students()
+                client.close()
                 messagebox.showinfo("Success", "Student updated successfully")
-            except Error as e:
-                messagebox.showerror("Error", f"Error while connecting to the database: {e}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error while clientecting to the database: {e}")
+            
 
     
 #This helps to delete the student's record from the database 
@@ -360,85 +333,69 @@ class StudentManagementSystem: #Starting the App
             confirmation = messagebox.askyesno("Confirmation", "Are you sure you want to delete this student?")
             if confirmation == 1:
                 try:
-                    connection = self.connect_to_database()
-                    cursor = connection.cursor()
-                    query = "DELETE FROM students WHERE Student_Id=%s"
-                    value = (self.Student_Id_var.get(),)
-                    cursor.execute(query, value)
-                    print("Data Deleted from Database!")
-                    connection.commit()
-                    connection.close()
+                    client = self.connect_to_database()
+                    students_collection = client["Student-cluster"]['students']
+                    students_collection.delete_one({"Student_Id":self.Student_Id_var.get()})
+                
                     self.clear_entries()
                     self.display_students()
                     messagebox.showinfo("Success", "Student deleted successfully")
-                except Error as e:
-                    messagebox.showerror("Error", f"Error while connecting to the database: {e}")
+                    client.close()
+                except Exception as e:
+                    messagebox.showerror("Error", f"Error while clientecting to the database: {e}")
         
     #This function helps to search the student in the database 
     def search_students(self):
         try:
-            connection = self.connect_to_database()
-            cursor = connection.cursor()
-            query = ""
-            value = ""
+            client = self.connect_to_database()
+            students_collection = client["Student-cluster"]['students']
+            
+                
+            students = {}
             if self.search_by.get() == 'Student_Id':
-                query = "SELECT * FROM students WHERE Student_Id=%s"
-                value = (self.search_txt.get(),)
+                students =students_collection.find({"Student_Id": self.search_txt.get()})
             elif self.search_by.get() == 'Name':
-                query = "SELECT * FROM students WHERE Name=%s"
-                value = (self.search_txt.get(),)
+                students =students_collection.find({"Name": self.search_txt.get()})
             elif self.search_by.get() == 'Grade_Section':
-                query = "SELECT * FROM students WHERE Grade_Section=%s"
-                value = (self.search_txt.get(),)
-            cursor.execute(query, value)
-            rows = cursor.fetchall()
+                students =students_collection.find({"Grade_Section": self.search_txt.get()})
+            
+            
             self.students_tree.delete(*self.students_tree.get_children())
-            for row in rows:
-                self.students_tree.insert('', tk.END, values=row)
-            connection.close()
-        except Error as e:
-            messagebox.showerror("Error", f"Error while connecting to the database: {e}")
+            for student in students:
+                self.students_tree.insert('', tk.END, values=(student['Student_Id'],student['Name'],student['Grade_Section'],student['Email'],student['Gender'],student['Contact']))
+            client.close()
+        except Exception as e:
+            messagebox.showerror("Error", f"Error while clientecting to the database: {e}")
 
     
 #This is used to display the student records on the Treeview 
     def display_students(self):
+        
         try:
-            connection = self.connect_to_database()
-            cursor = connection.cursor()
-            query = "SELECT * FROM students"
-            cursor.execute(query)
-            rows = cursor.fetchall()
+            client = self.connect_to_database()
+            students_collection = client["Student-cluster"]['students']
+            students =students_collection.find()
             self.students_tree.delete(*self.students_tree.get_children())
-            for row in rows:
-                self.students_tree.insert('', tk.END, values=row)
-            connection.close()
-        except Error as e:
+            for student in students:
+                self.students_tree.insert('', tk.END, values=(student['Student_Id'],student['Name'],student['Grade_Section'],student['Email'],student['Gender'],student['Contact']))
+            client.close()  
+        except errors.ConnectionFailure as e:
             messagebox.showerror("Error", f"Error while connecting to the database: {e}")
-            
+         
 #This helps to delete the Table from the Database 
     def delete_table(self):
+        
         try:
-            connection = self.connect_to_database()
-            cursor = connection.cursor()
+            client = self.connect_to_database()
+            client["Student-cluster"]['students'].drop()
+            messagebox.showinfo("Table Deleted", f"The table Students has been deleted successfully.")
+            self.students_tree.delete(*self.students_tree.get_children())
+            client.close()
+            
 
-            table_name = 'students'
-
-            # Check if the table exists before deleting it
-            cursor.execute(f"SHOW TABLES LIKE '{table_name}'")
-            table_exists = cursor.fetchone()
-
-            if table_exists:
-                cursor.execute(f"DROP TABLE {table_name}")
-                messagebox.showinfo("Table Deleted", f"The table '{table_name}' has been deleted successfully.")
-                self.students_tree.delete(*self.students_tree.get_children())
-            else:
-                messagebox.showwarning("Table Not Found", f"The table '{table_name}' does not exist.")
-
-            connection.close()
-
-        except Error as e:
+        except Exception as e:
             print(f"Error deleting table: {e}")
-
+        
 #This selects the row you select on the Treeview 
     def get_selected_row(self, event):
         try:
@@ -450,7 +407,7 @@ class StudentManagementSystem: #Starting the App
             self.email_var.set(values[3])
             self.gender_var.set(values[4])
             self.contact_var.set(values[5])
-            self.dob_var.set(values[6])
+            
         except IndexError:
             pass
 #This Clears all the entries on the fields 
@@ -461,18 +418,23 @@ class StudentManagementSystem: #Starting the App
         self.email_var.set('')
         self.gender_var.set('')
         self.contact_var.set('')
-        self.dob_var.set('')
+        
 
-#This Helps to connect the App to the "MySql Server" in your PC/Laptop 
-    @staticmethod
-    def connect_to_database():
-        connection = mysql.connector.connect(
-            host="localhost",
-            user="your_username",
-            password="your_password",
-            database="your_database_name"
-        )
-        return connection
+#This Helps to clientect the App to the "MongoDB Server" in your PC/Laptop 
+    
+    def connect_to_database(self):
+        
+        try:
+            connection_string =  "mongodb+srv://ouss12fr:ouss2002@student-cluster.gh1qe.mongodb.net/Student-cluster"
+            client= MongoClient(connection_string)
+            
+
+            return client
+
+        except errors.ConnectionFailure as e:
+            print("Error connecting to MongoDb:", e)
+            messagebox.showerror("Error", "Failed to connect to MongoDb")
+            return None
         
 #A function declared to open the app 
 def open_student_system(): 
