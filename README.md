@@ -1,6 +1,6 @@
 Implementing MongoDB using "pymongo"
 ------------------------------------------------------------------------------------------------------------------------------------
-<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mongodb/mongodb-original-wordmark.svg" style="width:300px;height:300px;margin-left: auto;
+<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/mongodb/mongodb-original-wordmark.svg" style="width:400px;height:400px;margin-left: auto;
   margin-right: auto;">
 
  
