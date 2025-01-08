@@ -3,7 +3,7 @@ Implementing MongoDB using "pymongo"
 
  
 
-  <bold> My Tkinter GUI ( Modded ) </bold>
+  <bold> Tkinter GUI </bold>
   <img src="bg_images/Light-Tk.png"/>
 
 
@@ -16,7 +16,7 @@ Change that according to the color preference or you can mess with different var
 
    
  <p>Check out this cool Project and if you like it pls leave it a star ⭐... </p>
- Leave a ⭐ .. or identify yourself as a Walmart bag 🔫
+ 
 
 
 
