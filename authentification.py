@@ -98,7 +98,8 @@ class LoginSignupSystem:
                     self.root.destroy()
                     # Call the function to open the student management system
                     print("Initializing Database Portal")
-                    s_system.open_student_system()  # Replace this line with your student system code
+                    s_system.open_student_system() 
+                    self.client.close()   # Replace this line with your student system code
 
                 else:
                     messagebox.showerror("Error", "Invalid username or password")
@@ -107,7 +108,7 @@ class LoginSignupSystem:
             except Exception as e:
                 print("Error occurred while logging in:", e)
                 messagebox.showerror("Error", "Failed to login")
-            self.client.close()  
+            
 
 
     def signup(self):
